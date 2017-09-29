@@ -1,13 +1,16 @@
 const expect = require('expect');
 const request = require('supertest');
+const {ObjectID} = require('mongodb');
 
 const {app} = require('./../server');
 const {Todo} = require('./../models/todo');
 const {User} = require('./../models/user');
 
 const todos = [{
+  _id: new ObjectID(),
   text: 'First test todo'
 }, {
+  _id: new ObjectID(),
   text: 'Second test todo'
 }];
 
@@ -89,31 +92,61 @@ describe('GET /todos', () => {
   });
 });
 
-describe('POST /users', () => {
-  it('Should add users to the database', (done) => {
-    var user = {
-      name: 'Aura',
-      email: 'aura.gardner@davenport.edu',
-      age: 52
-    };
+// describe('POST /users', () => {
+//   it('Should add users to the database', (done) => {
+//     var user = {
+//       name: 'Aura',
+//       email: 'aura.gardner@davenport.edu',
+//       age: 52
+//     };
+//
+//     request(app)
+//       .post('/users')
+//       .send(user)
+//       .expect(200)
+//       // .expect((res) => {
+//       //   // expect(res.body).toEqual(user);
+//       // })
+//       .end((e, res) => {
+//         if (e) {
+//           return done(e);
+//         }
+//         User.find(user)
+//           .then((users) => {
+//               expect(users.length).toBe(1);
+//               expect(users[0]).toBe(user);
+//               done();
+//           }).catch((e) => done(e));
+//       });
+//   });
+// });
 
+describe('GET /todos:id', () => {
+  it('Should retrieve users from database', (done) => {
+    var id = todos[0]._id.toHexString()
     request(app)
-      .post('/users')
-      .send(user)
+      .get(`/todos/${id}`)
       .expect(200)
-      // .expect((res) => {
-      //   // expect(res.body).toEqual(user);
-      // })
-      .end((e, res) => {
-        if (e) {
-          return done(e);
-        }
-        User.find(user)
-          .then((users) => {
-              expect(users.length).toBe(1);
-              expect(users[0]).toBe(user);
-              done();
-          }).catch((e) => done(e));
-      });
+      .expect((res) => {
+        expect(res.body.todo.text).toBe(todos[0].text);
+      })
+      .end(done);
   });
+
+  it('Should return 404 if todo not found', (done) => {
+    var id = new ObjectID().toHexString();
+    request(app)
+      .get(`/todos/${id}`)
+      .expect(404)
+      .end(done);
+  });
+
+  it('Should return 404 for non-object ids', (done) => {
+    request(app)
+      .get('/todos/123')
+      .expect(404)
+      .end(done);
+  })
+
+
 });
