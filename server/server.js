@@ -32,6 +32,28 @@ app.get('/todos', (req, res) => {
     });
 });
 
+app.post('/users', (req, res) => {
+  var user = new User({
+    name: req.body.name,
+    email: req.body.email,
+    age: req.body.age
+  });
+
+  user.save()
+    .then((doc) => {
+      res.send(doc);
+    }).catch((err) => {
+      res.status(400).send(err);
+    });
+});
+
+app.get('/users', (req, res) => {
+  User.find()
+    .then((users) => {
+      res.send({users})
+    }).catch((err) => res.status(400).send(err));
+})
+
 // app.get(`/todos/${id}`, (req, res) => {
 //   Todo.find()
 //     .then((todos) => {

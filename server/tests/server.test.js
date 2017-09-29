@@ -3,6 +3,7 @@ const request = require('supertest');
 
 const {app} = require('./../server');
 const {Todo} = require('./../models/todo');
+const {User} = require('./../models/user');
 
 const todos = [{
   text: 'First test todo'
@@ -10,10 +11,27 @@ const todos = [{
   text: 'Second test todo'
 }];
 
+const users = [{
+  name: 'Kendrick',
+  email: 'kbgar24@gmail.com',
+  age: 28
+},{
+  name: 'Kamille',
+  email: 'gardnerkamille@gmail.com',
+  age: 26
+}];
+
+
+
 beforeEach((done)=> {
   Todo.remove({}).then(() => {
     return Todo.insertMany(todos);
+  });
+
+  User.remove({}).then(() => {
+    return User.insertMany(users);
   }).then(() => done());
+
 });
 
 describe('POST /todos', () => {
@@ -59,7 +77,7 @@ describe('POST /todos', () => {
 
 });
 
-describe("GET /todos", () => {
+describe('GET /todos', () => {
   it('Should get all todos', (done) => {
     request(app)
       .get('/todos')
@@ -68,5 +86,34 @@ describe("GET /todos", () => {
         expect(res.body.todos.length).toBe(2);
       })
       .end(done);
+  });
+});
+
+describe('POST /users', () => {
+  it('Should add users to the database', (done) => {
+    var user = {
+      name: 'Aura',
+      email: 'aura.gardner@davenport.edu',
+      age: 52
+    };
+
+    request(app)
+      .post('/users')
+      .send(user)
+      .expect(200)
+      // .expect((res) => {
+      //   // expect(res.body).toEqual(user);
+      // })
+      .end((e, res) => {
+        if (e) {
+          return done(e);
+        }
+        User.find(user)
+          .then((users) => {
+              expect(users.length).toBe(1);
+              expect(users[0]).toBe(user);
+              done();
+          }).catch((e) => done(e));
+      });
   });
 });
