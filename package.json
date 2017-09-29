@@ -9,11 +9,12 @@
     "test-watch": "nodemon --exec 'yarn test'"
   },
   "engines": {
-    "node": "6.2.2"
+    "node": "8.6.0"
   },
   "dependencies": {
     "body-parser": "^1.18.2",
     "express": "^4.16.0",
+    "lodash": "^4.17.4",
     "mongodb": "^2.2.31",
     "mongoose": "^4.11.13"
   },
