@@ -57,6 +57,25 @@ app.post('/users', (req, res) => {
     });
 });
 
+// POST /users/login (email, password)
+// check db for user
+app.post('/users/login', (req, res) => {
+  var password = req.body.password;
+  var email = req.body.email
+
+  User.findByCredentials(email, password)
+  .then((user) => {
+    return user.generateAuthToken()
+    .then((token) => {
+      res.header('x-auth', token).send(user);
+    });
+  })
+  .catch((e) => {
+    res.status(400).send();
+  });
+});
+
+
 
 
 app.get('/users/me', authenticate, (req, res) => {
