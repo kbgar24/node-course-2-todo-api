@@ -1,6 +1,7 @@
 const expect = require('expect');
 const request = require('supertest');
 const {ObjectID} = require('mongodb');
+const _ = require('lodash');
 
 const {app} = require('./../server');
 const {Todo} = require('./../models/todo');
@@ -330,4 +331,53 @@ describe('POST /users', () => {
     })
   });
 
+});
+
+describe('POST /users/login', () => {
+  it('Should login user and return auth token', (done) => {
+    var {email, password} = _.pick(users[1], ['email', 'password']);
+    var token;
+
+    request(app)
+    .post('/users/login')
+    .send({email, password})
+    .expect(200)
+    .expect((res) => {
+      token = res.header['x-auth'];
+      expect(token).toBeTruthy();
+    })
+    .end((err, res) => {
+      if (err) {
+        return done(err);
+      }
+      User.findById(users[1]._id)
+      .then((user) => {
+        expect(user.tokens[0].access).toBe('auth');
+        expect(user.tokens[0].token).toBe(token);
+        done();
+      })
+      .catch((e) => done(e));
+    });
+  });
+
+
+  it('Should reject invalid login', (done) => {
+    var email = users[1].email;
+    var password ='wrongPassword1';
+
+    request(app)
+    .post('/users/login')
+    .send({email, password})
+    .expect(400)
+    .expect((res) => {
+      expect(res.headers['x-auth']).toBeFalsy();
+    })
+    .end((err, res) => {
+      User.findById(users[1]._id)
+      .then((user) => {
+        expect(user.tokens.length).toBe(0);
+        done()
+      }).catch((e) => done(e));
+    });
+  });
 });
