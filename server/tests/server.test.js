@@ -5,39 +5,10 @@ const {ObjectID} = require('mongodb');
 const {app} = require('./../server');
 const {Todo} = require('./../models/todo');
 const {User} = require('./../models/user');
+const {todos, populateTodos, users, populateUsers} = require('./seed/seed');
 
-const todos = [{
-  _id: new ObjectID(),
-  text: 'First test todo'
-}, {
-  _id: new ObjectID(),
-  text: 'Second test todo',
-  completed: true,
-  completedAt: 333
-}];
-
-const users = [{
-  name: 'Kendrick',
-  email: 'kbgar24@gmail.com',
-  age: 28
-},{
-  name: 'Kamille',
-  email: 'gardnerkamille@gmail.com',
-  age: 26
-}];
-
-
-
-beforeEach((done)=> {
-  Todo.remove({}).then(() => {
-    return Todo.insertMany(todos);
-  });
-
-  User.remove({}).then(() => {
-    return User.insertMany(users);
-  }).then(() => done());
-
-});
+beforeEach(populateUsers);
+beforeEach(populateTodos);
 
 describe('POST /todos', () => {
   it('Should create a new todo', (done) => {
@@ -226,7 +197,7 @@ describe('PATCH /todos/:id', () => {
       });
   });
 
-  it('Should clear completedAt when todo is not completed', () => {
+  it('Should clear completedAt when todo is not completed', (done) => {
     var id = todos[1]._id.toHexString();
     var body = {
       completed: false,
@@ -245,9 +216,118 @@ describe('PATCH /todos/:id', () => {
         Todo.findById(id)
           .then((todo) => {
             expect(todo.completedAt).toBeFalsy();
-            expect(todo.completed).toBe(true);
+            expect(todo.completed).toBe(false);
             done();
-          })
-      })
+          }).catch((e) => done(e));
+      });
   });
 })
+
+describe('GET /users/me', () => {
+  it('Should return user if authenticated', (done) => {
+    request(app)
+    .get('/users/me')
+    .set('x-auth', users[0].tokens[0].token)
+    .expect(200)
+    .expect((res) => {
+      expect(res.body._id).toBe(users[0]._id.toHexString());
+      expect(res.body.email).toBe(users[0].email);
+    })
+    .end(done)
+  });
+
+  it('Should return 401 if not authenticated', (done) => {
+    request(app)
+    .get('/users/me')
+    .expect(401)
+    .expect((res) => {
+      expect(res.body).toEqual({})
+    })
+    .end(done);
+  });
+});
+
+describe('POST /users', () => {
+  it('Should create a user', (done) => {
+    var newUser = {
+      email: 'newUser@email.com',
+      password: 'newUserPWD'
+    };
+
+    request(app)
+    .post('/users')
+    .send(newUser)
+    .expect(200)
+    .expect((res) => {
+      expect(res.headers['x-auth']).toBeTruthy();
+      expect(res.body.email).toBe(newUser.email)
+      expect(res.body._id).toBeTruthy();
+    })
+    .end((err, res) => {
+      if (err) {
+        return done(err);
+      }
+      User.findOne({email: newUser.email})
+      .then((user)=> {
+        expect(user.email).toBe(newUser.email);
+        expect(user.password).not.toBe(newUser.password);
+        done()
+      }).catch((e) => done(e))
+    });
+
+  });
+
+  it('Should return validation error if password is invalid', (done) => {
+    var user = {
+      email: 'newUser@email.com',
+      password: '1'
+    };
+    request(app)
+    .post('/users')
+    .send(user)
+    .expect(400)
+    .expect((res) => {
+      expect(res.clientError).toBe(true);
+    })
+    .end(done);
+  });
+
+  it('Should return validation error if email is invalid', (done) => {
+    var user = {
+      email: '1',
+      password: 'abc123'
+    }
+    request(app)
+    .post('/users')
+    .send(user)
+    .expect(400)
+    .expect((res) => {
+      expect(res.clientError).toBe(true);
+    })
+    .end(done);
+
+  });
+  //
+  it('Should not create user if email is in use', (done) => {
+    var user = users[0];
+    request(app)
+    .post('/users')
+    .send(user)
+    .expect(400)
+    .expect((res) => {
+      expect(res.body.code).toBe(11000);
+    })
+    .end((err, res) => {
+      if (err) {
+        return done(err);
+      }
+      User.find({email: user.email})
+      .then((users) => {
+        expect(users.length).toBe(1);
+        done()
+      })
+      .catch((err) => done(err));
+    })
+  });
+
+});
